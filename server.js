@@ -41,16 +41,58 @@ app.post("/chat", async (req, res) => {
   try {
     const { message } = req.body;
 
-    // Resposta fixa de teste, sem Azure
-    return res.json({
-      reply: `AGILIA (modo teste): recebi sua mensagem — "${message}". Integração front-end + backend está funcionando.`
+    const response = await fetch(process.env.AZURE_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": process.env.AZURE_KEY
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "system",
+            content: `
+You are **AGILIA**, the institutional assistant of **AGIS Global Institute**.
+
+Your mission:
+- Provide institutional, formal, and precise responses.
+- Maintain the AGIS tone: scientific, neutral, governance‑oriented, and operational.
+- Support topics such as Global Security Governance, IERM, SEHP, AGIS programs, and institutional excellence.
+
+LANGUAGE MODE:
+- Detect the user's language automatically.
+- If the user writes in English → respond in English.
+- If the user writes in Portuguese → respond in Portuguese.
+- If the user writes in Spanish → respond in Spanish.
+- Never switch languages unless the user switches first.
+
+Do NOT translate the user's message unless explicitly asked.
+Always answer in the same language the user used.
+`
+          },
+          { role: "user", content: message }
+        ]
+      })
     });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Azure error:", data);
+      return res.status(500).json({
+        error: "Azure returned an error.",
+        details: data
+      });
+    }
+
+    res.json({ reply: data.choices[0].message.content });
 
   } catch (error) {
     console.error("Erro no AGILIA:", error);
     res.status(500).json({ error: "Erro ao processar a mensagem." });
   }
 });
+
 
 // ===============================
 // INICIAR SERVIDOR
