@@ -1,7 +1,6 @@
 const express = require("express");
-const fetch = require("node-fetch");
 const cors = require("cors");
-require("dotenv").config();
+const axios = require("axios");
 
 const app = express();
 app.use(cors());
@@ -40,24 +39,25 @@ app.get("/", (req, res) => {
 // ===============================
 app.post("/chat", async (req, res) => {
   try {
-    const userMessage = req.body.message;
+    const { message } = req.body;
 
-    const response = await fetch(process.env.AZURE_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": process.env.AZURE_KEY
-      },
-      body: JSON.stringify({
+    const response = await axios.post(
+      process.env.AZURE_ENDPOINT,
+      {
         messages: [
           { role: "system", content: "Você é o AGILIA, assistente institucional da AGIS." },
-          { role: "user", content: userMessage }
+          { role: "user", content: message }
         ]
-      })
-    });
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": process.env.AZURE_KEY
+        }
+      }
+    );
 
-    const data = await response.json();
-    res.json({ reply: data.choices[0].message.content });
+    res.json({ reply: response.data.choices[0].message.content });
 
   } catch (error) {
     console.error("Erro no AGILIA:", error);
