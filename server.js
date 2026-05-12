@@ -41,23 +41,10 @@ app.post("/chat", async (req, res) => {
   try {
     const { message } = req.body;
 
-    const response = await axios.post(
-      process.env.AZURE_ENDPOINT,
-      {
-        messages: [
-          { role: "system", content: "Você é o AGILIA, assistente institucional da AGIS." },
-          { role: "user", content: message }
-        ]
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": process.env.AZURE_KEY
-        }
-      }
-    );
-
-    res.json({ reply: response.data.choices[0].message.content });
+    // Resposta fixa de teste, sem Azure
+    return res.json({
+      reply: `AGILIA (modo teste): recebi sua mensagem — "${message}". Integração front-end + backend está funcionando.`
+    });
 
   } catch (error) {
     console.error("Erro no AGILIA:", error);
