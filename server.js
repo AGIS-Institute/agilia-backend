@@ -18,7 +18,7 @@ app.use(express.json());
 // ============================================================
 
 const PROJECT_ENDPOINT =
-  "https://agis-global-ia-resource.cognitiveservices.azure.com";
+  "https://agis-global-ia-resource.services.ai.azure.com/api/projects/agis_global_ia";
 
 const AGILIA_AGENT_ID = "asst_qII8PNGv2AO0Jtj1WFu8AlZR";
 
