@@ -1,103 +1,118 @@
-const express = require("express");
-const cors = require("cors");
-const axios = require("axios");
+// server.js – Backend AGILIA / AGIS
+// Requisitos:
+//   npm install express cors dotenv @azure/ai-projects @azure/identity
+
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { AIProjectClient } from "@azure/ai-projects";
+import { DefaultAzureCredential } from "@azure/identity";
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ===============================
-// ROTA VISUAL PARA O HOSTINGER
-// ===============================
-app.get("/", (req, res) => {
-  res.send(`
-    <html>
-      <head>
-        <title>AGILIA Backend</title>
-        <style>
-          body {
-            background-color: #000;
-            color: #d4af37;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding-top: 15%;
-          }
-          h1 { font-size: 42px; margin-bottom: 10px; }
-          p { font-size: 18px; opacity: 0.8; }
-        </style>
-      </head>
-      <body>
-        <h1>AGILIA Backend Ativo</h1>
-        <p>AGIS Global Institute — Excellence in Applied Global Security</p>
-      </body>
-    </html>
-  `);
-});
+// =========================
+// CONFIGURAÇÃO DO PROJETO
+// =========================
 
-// ===============================
-// ENDPOINT DO AGILIA (Azure AI)
-// ===============================
+// Endpoint FIXO do projeto (Fábrica da Microsoft)
+const PROJECT_ENDPOINT =
+  "https://agis-global-ia-resource.services.ai.azure.com/api/projects/agis_global_ia";
+
+// ID FIXO do agente AGILIA (já confirmado)
+const AGILIA_AGENT_ID = "asst_qII8PNGv2AO0Jtj1WFu8AlZR";
+
+// Opção 1: usar DefaultAzureCredential (Managed Identity / dev com az login)
+const credential = new DefaultAzureCredential();
+
+// Cliente do projeto
+const projectClient = new AIProjectClient(PROJECT_ENDPOINT, credential);
+
+// =========================
+// FUNÇÃO DE CONVERSA COM O AGENTE
+// =========================
+
+async function runAgiliaConversation(userMessage) {
+  // Recupera o agente AGILIA
+  const agent = await projectClient.agents.getAgent(AGILIA_AGENT_ID);
+
+  // Cria thread
+  const thread = await projectClient.agents.threads.create();
+
+  // Cria mensagem do usuário
+  await projectClient.agents.messages.create(thread.id, "user", userMessage);
+
+  // Cria run
+  let run = await projectClient.agents.runs.create(thread.id, agent.id);
+
+  // Polling até terminar
+  while (run.status === "queued" || run.status === "in_progress") {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    run = await projectClient.agents.runs.get(thread.id, run.id);
+  }
+
+  if (run.status === "failed") {
+    console.error("Run failed:", run.lastError);
+    throw new Error("AGILIA run failed");
+  }
+
+  // Lista mensagens em ordem crescente
+  const messages = projectClient.agents.messages.list(thread.id, {
+    order: "asc",
+  });
+
+  let lastAssistantMessage = "Sem resposta do agente.";
+
+  for await (const m of messages) {
+    if (m.role === "assistant") {
+      const content = m.content.find(
+        (c) => c.type === "text" && "text" in c
+      );
+      if (content) {
+        lastAssistantMessage = content.text.value;
+      }
+    }
+  }
+
+  return lastAssistantMessage;
+}
+
+// =========================
+// ROTA /chat PARA O HOSTINGER
+// =========================
+
 app.post("/chat", async (req, res) => {
   try {
     const { message } = req.body;
 
-    const response = await fetch(process.env.AZURE_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": process.env.AZURE_KEY
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "system",
-            content: `
-You are **AGILIA**, the institutional assistant of **AGIS Global Institute**.
-
-Your mission:
-- Provide institutional, formal, and precise responses.
-- Maintain the AGIS tone: scientific, neutral, governance‑oriented, and operational.
-- Support topics such as Global Security Governance, IERM, SEHP, AGIS programs, and institutional excellence.
-
-LANGUAGE MODE:
-- Detect the user's language automatically.
-- If the user writes in English → respond in English.
-- If the user writes in Portuguese → respond in Portuguese.
-- If the user writes in Spanish → respond in Spanish.
-- Never switch languages unless the user switches first.
-
-Do NOT translate the user's message unless explicitly asked.
-Always answer in the same language the user used.
-`
-          },
-          { role: "user", content: message }
-        ]
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("Azure error:", data);
-      return res.status(500).json({
-        error: "Azure returned an error.",
-        details: data
-      });
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ error: "Mensagem inválida." });
     }
 
-    res.json({ reply: data.choices[0].message.content });
-
+    const reply = await runAgiliaConversation(message);
+    return res.json({ reply });
   } catch (error) {
-    console.error("Erro no AGILIA:", error);
-    res.status(500).json({ error: "Erro ao processar a mensagem." });
+    console.error("Erro no /chat:", error);
+    return res.status(500).json({ error: "Erro interno no servidor AGILIA." });
   }
 });
 
+// =========================
+// HEALTHCHECK
+// =========================
 
-// ===============================
-// INICIAR SERVIDOR
-// ===============================
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", service: "AGILIA-backend" });
+});
+
+// =========================
+// INICIALIZAÇÃO DO SERVIDOR
+// =========================
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor AGILIA rodando na porta ${PORT}`);
+  console.log(`AGILIA backend rodando na porta ${PORT}`);
 });
