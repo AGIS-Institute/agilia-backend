@@ -1,7 +1,3 @@
-// ============================================================
-//  AGILIA — Backend Oficial do AGIS (Render + API Key CORRETO)
-// ============================================================
-
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -13,27 +9,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ============================================================
-// CONFIGURAÇÃO DO PROJETO AGIS / AGILIA
-// ============================================================
-
 const PROJECT_ENDPOINT =
   "https://agis-global-ia-resource.services.ai.azure.com/api/projects/agis_global_ia";
 
 const AGILIA_AGENT_ID = "asst_qII8PNGv2AO0Jtj1WFu8AlZR";
 
-// Autenticação via API Key (Render COMPATÍVEL)
 const credential = {
   key: process.env.AZURE_API_KEY,
   keyHeaderName: "api-key"
 };
 
-// Cliente do projeto
 const projectClient = new AIProjectClient(PROJECT_ENDPOINT, credential);
-
-// ============================================================
-// FUNÇÃO PRINCIPAL — EXECUTA UMA CONVERSA COM O AGILIA
-// ============================================================
 
 async function runAgiliaConversation(userMessage) {
   const agent = await projectClient.agents.getAgent(AGILIA_AGENT_ID);
@@ -74,10 +60,6 @@ async function runAgiliaConversation(userMessage) {
   return lastAssistantMessage;
 }
 
-// ============================================================
-// ROTA /chat — USADA PELO HOSTINGER
-// ============================================================
-
 app.post("/chat", async (req, res) => {
   try {
     const { message } = req.body;
@@ -98,10 +80,6 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-// ============================================================
-// HEALTHCHECK
-// ============================================================
-
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -109,10 +87,6 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-
-// ============================================================
-// INICIAR SERVIDOR
-// ============================================================
 
 const PORT = process.env.PORT || 3000;
 
