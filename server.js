@@ -1,12 +1,11 @@
 // ============================================================
-//  AGILIA — Backend Oficial do AGIS (Render + API Key)
+//  AGILIA — Backend Oficial do AGIS (Render + API Key CORRETO)
 // ============================================================
 
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { AIProjectClient } from "@azure/ai-projects";
-import { AzureKeyCredential } from "@azure/core-auth";
 
 dotenv.config();
 
@@ -24,7 +23,10 @@ const PROJECT_ENDPOINT =
 const AGILIA_AGENT_ID = "asst_qII8PNGv2AO0Jtj1WFu8AlZR";
 
 // Autenticação via API Key (Render COMPATÍVEL)
-const credential = new AzureKeyCredential(process.env.AZURE_API_KEY);
+const credential = {
+  key: process.env.AZURE_API_KEY,
+  keyHeaderName: "api-key"
+};
 
 // Cliente do projeto
 const projectClient = new AIProjectClient(PROJECT_ENDPOINT, credential);
@@ -117,7 +119,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 AGILIA backend running on port ${PORT}`);
 });
-
-
-
-
